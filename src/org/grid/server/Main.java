@@ -1,5 +1,6 @@
 /*
  *  AgentField - a simple capture-the-flag simulation for distributed intelligence
+ *  Copyright (C) 2012 Andraz Bajt
  *  Copyright (C) 2011 Luka Cehovin <http://vicos.fri.uni-lj.si/lukacu>
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -511,9 +512,7 @@ public class Main {
 	}
 	
 	public static void info(String format, Object ... objects) {
-		
-		//System.out.println(date.format(new Date()) + String.format(format, objects));
-		
+		System.out.println(date.format(new Date()) + String.format(format, objects));
 	}
 	
 }

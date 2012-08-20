@@ -1,1 +1,5 @@
 .svn
+.idea
+*.iml
+out
+run
