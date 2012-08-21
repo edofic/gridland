@@ -21,6 +21,7 @@ package org.grid.visualizer;
 
 import org.grid.arena.Arena;
 
+import java.awt.*;
 import java.io.Serializable;
 
 /**
@@ -43,6 +44,7 @@ public class CompactTiles implements Serializable {
     public int width, height;
     public int[] baseTiles;
     public int[] bodyTiles;
+    public int[] bodyColor;
 
     /**
      * create a compact representation for network
@@ -55,17 +57,22 @@ public class CompactTiles implements Serializable {
         int height;
         int[] baseTiles;
         int[] bodyTiles;
+        int[] bodyColor;
 
         synchronized (arena) {
             width = arena.getWidth();
             height = arena.getHeight();
             baseTiles = new int[width * height];
             bodyTiles = new int[width * height];
+            bodyColor = new int[width * height];
+
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
                     int i = y * width + x;
                     baseTiles[i] = arena.getBaseTile(x, y);
                     bodyTiles[i] = arena.getBodyTile(x, y);
+                    Color c = arena.getBodyColor(x, y);
+                    bodyColor[i] = c != null ? c.getRGB() : 0;
                 }
             }
         }
@@ -75,6 +82,7 @@ public class CompactTiles implements Serializable {
         ca.height = height;
         ca.baseTiles = baseTiles;
         ca.bodyTiles = bodyTiles;
+        ca.bodyColor = bodyColor;
         return ca;
     }
 }

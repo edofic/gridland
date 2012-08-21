@@ -18,7 +18,7 @@ public class CompactArena implements Arena {
     }
 
     private int encode(int x, int y) {
-        if(x<0 || x>=tiles.width || y<0 || y>=tiles.height) {
+        if (x < 0 || x >= tiles.width || y < 0 || y >= tiles.height) {
             throw new IndexOutOfBoundsException(String.format("Width: %d, height %d, x %d, y %d",
                     tiles.width, tiles.height, x, y));
         }
@@ -37,12 +37,12 @@ public class CompactArena implements Arena {
 
     @Override
     public int getBaseTile(int x, int y) {
-        return tiles.baseTiles[encode(x,y)];
+        return tiles.baseTiles[encode(x, y)];
     }
 
     @Override
     public int getBodyTile(int x, int y) {
-        return tiles.bodyTiles[encode(x,y)];
+        return tiles.bodyTiles[encode(x, y)];
     }
 
     @Override
@@ -57,6 +57,7 @@ public class CompactArena implements Arena {
 
     @Override
     public Color getBodyColor(int x, int y) {
-        return Color.GREEN;
+        int c = tiles.bodyColor[encode(x, y)];
+        return c != 0 ? new Color(c) : null;
     }
 }
