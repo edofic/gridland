@@ -1,80 +1,62 @@
-/*
- *  AgentField - a simple capture-the-flag simulation for distributed intelligence
- *  Copyright (C) 2012 Andraz Bajt
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-
 package org.grid.visualizer;
 
 import org.grid.arena.Arena;
 
-import java.io.Serializable;
+import java.awt.*;
 
 /**
- * Compact format for presentation of arena
- * just with tiles. For purposes of remote visualizer
- * don't try to modify fields and use again since this will
- * cause problems with serialization cache
- * <p/>
- * index i = y*width + x
- * <p/>
+ * Reconstruction from CompactTiles
  * User: andraz
  * Date: 8/21/12
- * Time: 7:11 PM
+ * Time: 11:05 PM
  */
-public class CompactArena implements Serializable {
-    //use factory
-    private CompactArena() {
+public class CompactArena implements Arena {
+    private CompactTiles tiles;
+
+    public CompactArena(CompactTiles tiles) {
+        this.tiles = tiles;
     }
 
-    public int width, height;
-    public int[] baseTiles;
-    public int[] bodyTiles;
-
-    /**
-     * create a compact representation for network
-     *
-     * @param arena to "compress"
-     * @return new compact representation
-     */
-    public static CompactArena fromArena(Arena arena) {
-        int width;
-        int height;
-        int[] baseTiles;
-        int[] bodyTiles;
-
-        synchronized (arena) {
-            width = arena.getWidth();
-            height = arena.getHeight();
-            baseTiles = new int[width * height];
-            bodyTiles = new int[width * height];
-            for (int x = 0; x < width; x++) {
-                for (int y = 0; y < height; y++) {
-                    int i = y * width + x;
-                    baseTiles[i] = arena.getBaseTile(x, y);
-                    bodyTiles[i] = arena.getBodyTile(x, y);
-                }
-            }
+    private int encode(int x, int y) {
+        if(x<0 || x>=tiles.width || y<0 || y>=tiles.height) {
+            throw new IndexOutOfBoundsException(String.format("Width: %d, height %d, x %d, y %d",
+                    tiles.width, tiles.height, x, y));
         }
+        return y * tiles.width + x;
+    }
 
-        CompactArena ca = new CompactArena();
-        ca.width = width;
-        ca.height = height;
-        ca.baseTiles = baseTiles;
-        ca.bodyTiles = bodyTiles;
-        return ca;
+    @Override
+    public int getWidth() {
+        return tiles.width;
+    }
+
+    @Override
+    public int getHeight() {
+        return tiles.height;
+    }
+
+    @Override
+    public int getBaseTile(int x, int y) {
+        return tiles.baseTiles[encode(x,y)];
+    }
+
+    @Override
+    public int getBodyTile(int x, int y) {
+        return tiles.bodyTiles[encode(x,y)];
+    }
+
+    @Override
+    public float getBodyOffsetX(int x, int y) {
+        return 0;
+    }
+
+    @Override
+    public float getBodyOffsetY(int x, int y) {
+        return 0;
+    }
+
+    @Override
+    public Color getBodyColor(int x, int y) {
+        return Color.GREEN;
     }
 }

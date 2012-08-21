@@ -18,36 +18,29 @@
 
 package org.grid.visualizer;
 
+import org.grid.arena.TerminalView;
+
 /**
  * User: andraz
  * Date: 8/21/12
  * Time: 9:27 PM
  */
-public class CliVisualizer {
+public class CliVisualizer extends TerminalView {
 
     public CliVisualizer(String host, int port) {
         new PushClient(host, port) {
             @Override
             protected void onReceive(Object data) {
-                if (data instanceof CompactArena) {
-                    render((CompactArena) data);
+                if (data instanceof CompactTiles) {
+                    render((CompactTiles) data);
                 }
             }
         };
     }
 
-    private synchronized void render(CompactArena data) {
-        int width = data.width;
-        int height = data.height;
-
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                System.out.print(data.bodyTiles[y * width + x] > 0 ? 'x' : ' ');
-            }
-            System.out.println();
-        }
-
-        System.out.println("\n");
+    private synchronized void render(CompactTiles data) {
+        final CompactArena compactArena = new CompactArena(data);
+        update(compactArena);
     }
 
     public static void main(String[] args) {

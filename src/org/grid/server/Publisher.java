@@ -19,7 +19,7 @@
 package org.grid.server;
 
 import org.grid.arena.Arena;
-import org.grid.visualizer.CompactArena;
+import org.grid.visualizer.CompactTiles;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -98,7 +98,7 @@ public class Publisher {
      * @param arena to publish
      */
     public void publishArena(Arena arena) {
-        sendToAll(CompactArena.fromArena(arena));
+        sendToAll(CompactTiles.fromArena(arena));
     }
 
     private static class Client {
