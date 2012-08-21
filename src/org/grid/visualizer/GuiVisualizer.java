@@ -36,8 +36,6 @@ public class GuiVisualizer {
 
     private static final String RELEASE = "0.9";
 
-    private static boolean running = false;
-
     private static GameSwingView view = new GameSwingView();
 
     private static JLabel gameStepDisplay = new JLabel();
@@ -46,21 +44,6 @@ public class GuiVisualizer {
             "big", "huge"};
 
     private static final int[] ZOOM_LEVELS = new int[]{6, 12, 16, 20, 24};
-
-    private static Action playpause = new AbstractAction("Play") {
-
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        public void actionPerformed(ActionEvent arg0) {
-
-            running = !running;
-
-            setEnabled(false);
-
-            //putValue(AbstractAction.NAME, running ? "Pause" : "Play");
-        }
-    };
 
     private static class GameSwingView extends SwingView {
 
@@ -81,8 +64,6 @@ public class GuiVisualizer {
 
             g.setColor(Color.YELLOW);
         }
-
-
     }
 
     public static void main(String[] args) throws IOException {
@@ -132,8 +113,6 @@ public class GuiVisualizer {
         left.add(pane, BorderLayout.CENTER);
 
         JPanel status = new JPanel(new BorderLayout());
-
-        status.add(new JButton(playpause), BorderLayout.WEST);
 
         final JComboBox zoom = new JComboBox(ZOOM_LEVELS_TITLES);
 
