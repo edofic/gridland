@@ -27,7 +27,7 @@ import java.net.Socket;
  * Date: 8/20/12
  * Time: 4:55 PM
  */
-public class PushClient {
+public class PushClient implements Runnable {
     private ObjectInputStream input;
     private String id = (Math.random() + "").substring(2, 8) + " ";
 
@@ -39,25 +39,22 @@ public class PushClient {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    try {
-                        onReceive(input.readObject());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } catch (ClassNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }).start();
     }
-
 
     protected void onReceive(Object data) {
         System.out.println(id + data);
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+            try {
+                onReceive(input.readObject());
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

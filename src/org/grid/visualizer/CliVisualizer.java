@@ -28,14 +28,14 @@ import org.grid.arena.TerminalView;
 public class CliVisualizer extends TerminalView {
 
     public CliVisualizer(String host, int port) {
-        new PushClient(host, port) {
+        new Thread(new PushClient(host, port) {
             @Override
             protected void onReceive(Object data) {
                 if (data instanceof CompactTiles) {
                     render((CompactTiles) data);
                 }
             }
-        };
+        }).start();
     }
 
     private synchronized void render(CompactTiles data) {
