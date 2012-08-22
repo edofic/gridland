@@ -48,7 +48,7 @@ public class MainWithPublish {
 
     private static final int VISUALIZATION_PORT = 5001;
 
-    private static Publisher publisher = new Publisher(VISUALIZATION_PORT);
+    private static Publisher publisher = new Publisher(VISUALIZATION_PORT, 10, 4);
 
     private static final String RELEASE = "0.9";
 

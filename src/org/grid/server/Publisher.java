@@ -26,7 +26,9 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -42,7 +44,7 @@ public class Publisher {
     private final List<Client> clients;
     private final ExecutorService executor;
 
-    public Publisher(int port) {
+    public Publisher(int port, final int interval, final int bufferSize) {
         try {
             socket = new ServerSocket(port);
         } catch (IOException e) {
@@ -60,7 +62,7 @@ public class Publisher {
                         Socket sck = socket.accept();
                         sck.setTcpNoDelay(true);
                         synchronized (clients) {
-                            clients.add(new Client(sck));
+                            clients.add(new Client(sck, interval, bufferSize));
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -74,19 +76,16 @@ public class Publisher {
         executor.submit(new Runnable() {
             @Override
             public void run() {
-                List<Client> toRemove = new ArrayList<Client>();
                 synchronized (clients) {
-                    for (Client client : clients) {
+                    final Iterator<Client> iterator = clients.iterator();
+                    while (iterator.hasNext()) {
+                        Client client = iterator.next();
                         if (!client.transmit(data)) {
-                            toRemove.add(client);
+                            iterator.remove();
                         }
                     }
                 }
 
-                for (Client client : toRemove) {
-                    client.close();
-                }
-                clients.removeAll(toRemove);
             }
         });
     }
@@ -103,33 +102,48 @@ public class Publisher {
 
     private static class Client {
         private ObjectOutputStream output;
-        private Socket socket;
+        private final ConcurrentLinkedQueue<Object> queue = new ConcurrentLinkedQueue<Object>();
+        private boolean alive = true;
+        private final int bufferSize;
 
-        public Client(Socket sck) {
-            this.socket = sck;
+        public Client(Socket sck, final int interval, int bufferSize) {
             try {
                 this.output = new ObjectOutputStream(sck.getOutputStream());
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+            this.bufferSize = bufferSize;
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        Object data = queue.poll();
+                        if (data != null) {
+                            try {
+                                output.writeObject(data);
+                            } catch (IOException e) {
+                                alive = false;
+                                break;
+                            }
+                        } else {
+                            try {
+                                Thread.sleep(interval);
+                            } catch (InterruptedException e) {
+                            }
+                        }
+                    }
+                }
+            }).start();
         }
 
         public boolean transmit(Object data) {
-            try {
-                output.writeObject(data);
-                return true;
-            } catch (IOException e) {
-                //failure
-                return false;
+            if (queue.size() < bufferSize) {
+                queue.add(data);
             }
-        }
 
-        public void close() {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            return alive;
         }
     }
 }
