@@ -42,8 +42,7 @@ public class CompactTiles implements Serializable {
     }
 
     public int width, height;
-    public int[] baseTiles;
-    public int[] bodyTiles;
+    public int[] tiles;
     public int[] bodyColor;
     public float[] bodyXoffset;
     public float[] bodyYoffset;
@@ -57,8 +56,7 @@ public class CompactTiles implements Serializable {
     public static CompactTiles fromArena(Arena arena) {
         int width;
         int height;
-        int[] baseTiles;
-        int[] bodyTiles;
+        int[] tiles;
         int[] bodyColor;
         float[] bodyXoffset;
         float[] bodyYoffset;
@@ -66,8 +64,7 @@ public class CompactTiles implements Serializable {
         synchronized (arena) {
             width = arena.getWidth();
             height = arena.getHeight();
-            baseTiles = new int[width * height];
-            bodyTiles = new int[width * height];
+            tiles = new int[width * height];
             bodyColor = new int[width * height];
             bodyXoffset = new float[width * height];
             bodyYoffset = new float[width * height];
@@ -75,8 +72,9 @@ public class CompactTiles implements Serializable {
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
                     int i = y * width + x;
-                    baseTiles[i] = arena.getBaseTile(x, y);
-                    bodyTiles[i] = arena.getBodyTile(x, y);
+                    int base = arena.getBaseTile(x, y);
+                    int body = arena.getBodyTile(x, y);
+                    tiles[i] = (base << 16) | body;
                     Color c = arena.getBodyColor(x, y);
                     bodyColor[i] = c != null ? c.getRGB() : 0;
                     bodyXoffset[i] = arena.getBodyOffsetX(x, y);
@@ -88,8 +86,7 @@ public class CompactTiles implements Serializable {
         CompactTiles ca = new CompactTiles();
         ca.width = width;
         ca.height = height;
-        ca.baseTiles = baseTiles;
-        ca.bodyTiles = bodyTiles;
+        ca.tiles = tiles;
         ca.bodyColor = bodyColor;
         ca.bodyXoffset = bodyXoffset;
         ca.bodyYoffset = bodyYoffset;

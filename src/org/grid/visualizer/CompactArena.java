@@ -11,6 +11,8 @@ import java.awt.*;
  * Time: 11:05 PM
  */
 public class CompactArena implements Arena {
+    private static final int LOWER_BYTES = 0xffff;
+
     private CompactTiles tiles;
 
     public CompactArena(CompactTiles tiles) {
@@ -37,12 +39,12 @@ public class CompactArena implements Arena {
 
     @Override
     public int getBaseTile(int x, int y) {
-        return tiles.baseTiles[encode(x, y)];
+        return (tiles.tiles[encode(x, y)] >> 16);
     }
 
     @Override
     public int getBodyTile(int x, int y) {
-        return tiles.bodyTiles[encode(x, y)];
+        return (tiles.tiles[encode(x, y)] & LOWER_BYTES);
     }
 
     @Override
