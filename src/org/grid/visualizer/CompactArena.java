@@ -47,12 +47,12 @@ public class CompactArena implements Arena {
 
     @Override
     public float getBodyOffsetX(int x, int y) {
-        return 0;
+        return tiles.bodyXoffset[encode(x, y)];
     }
 
     @Override
     public float getBodyOffsetY(int x, int y) {
-        return 0;
+        return tiles.bodyYoffset[encode(x, y)];
     }
 
     @Override

@@ -45,6 +45,8 @@ public class CompactTiles implements Serializable {
     public int[] baseTiles;
     public int[] bodyTiles;
     public int[] bodyColor;
+    public float[] bodyXoffset;
+    public float[] bodyYoffset;
 
     /**
      * create a compact representation for network
@@ -58,6 +60,8 @@ public class CompactTiles implements Serializable {
         int[] baseTiles;
         int[] bodyTiles;
         int[] bodyColor;
+        float[] bodyXoffset;
+        float[] bodyYoffset;
 
         synchronized (arena) {
             width = arena.getWidth();
@@ -65,6 +69,8 @@ public class CompactTiles implements Serializable {
             baseTiles = new int[width * height];
             bodyTiles = new int[width * height];
             bodyColor = new int[width * height];
+            bodyXoffset = new float[width * height];
+            bodyYoffset = new float[width * height];
 
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
@@ -73,6 +79,8 @@ public class CompactTiles implements Serializable {
                     bodyTiles[i] = arena.getBodyTile(x, y);
                     Color c = arena.getBodyColor(x, y);
                     bodyColor[i] = c != null ? c.getRGB() : 0;
+                    bodyXoffset[i] = arena.getBodyOffsetX(x, y);
+                    bodyYoffset[i] = arena.getBodyOffsetY(x, y);
                 }
             }
         }
@@ -83,6 +91,8 @@ public class CompactTiles implements Serializable {
         ca.baseTiles = baseTiles;
         ca.bodyTiles = bodyTiles;
         ca.bodyColor = bodyColor;
+        ca.bodyXoffset = bodyXoffset;
+        ca.bodyYoffset = bodyYoffset;
         return ca;
     }
 }
