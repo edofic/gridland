@@ -21,252 +21,242 @@ import java.io.Serializable;
 
 public abstract class Message implements Serializable {
 
-	public static enum Direction {NONE, UP, DOWN, LEFT, RIGHT}
-	
-	private static final long serialVersionUID = 1L;
+    public static enum Direction {NONE, UP, DOWN, LEFT, RIGHT}
 
-	public String toString() {
-		return getClass().getSimpleName();
-	}
-	
-	public static class RegisterMessage extends Message {
+    private static final long serialVersionUID = 1L;
 
-		private static final long serialVersionUID = 1L;
+    public String toString() {
+        return getClass().getSimpleName();
+    }
 
-		public RegisterMessage(String team, String passphrase) {
-			this.team = team;
-			this.passphrase = passphrase;
-		}
+    public static class RegisterMessage extends Message {
 
-		private String team, passphrase;
+        private static final long serialVersionUID = 1L;
 
-		public String getTeam() {
-			return team;
-		}
+        public RegisterMessage(String team, String passphrase) {
+            this.team = team;
+            this.passphrase = passphrase;
+        }
 
-		public void setTeam(String team) {
-			this.team = team;
-		}
+        private String team, passphrase;
 
-		public String getPassphrase() {
-			return passphrase;
-		}
+        public String getTeam() {
+            return team;
+        }
 
-		public void setPassphrase(String passphrase) {
-			this.passphrase = passphrase;
-		}
-		
-	}
-	
-	public static class AcknowledgeMessage extends Message {
+        public void setTeam(String team) {
+            this.team = team;
+        }
 
-		private static final long serialVersionUID = 1L;
-		
-	}
-	
-	
-	public static class InitializeMessage extends Message {
+        public String getPassphrase() {
+            return passphrase;
+        }
 
-		private static final long serialVersionUID = 1L;
-		
-		private int id;
+        public void setPassphrase(String passphrase) {
+            this.passphrase = passphrase;
+        }
 
-		private int maxMessageSize;
-		
-		private int gameSpeed;
-		
-		public int getId() {
-			return id;
-		}
+    }
 
-		public void setId(int id) {
-			this.id = id;
-		}
+    public static class AcknowledgeMessage extends Message {
 
-		public int getMaxMessageSize() {
-			return maxMessageSize;
-		}
+        private static final long serialVersionUID = 1L;
 
-		public void setMaxMessageSize(int maxMessageSize) {
-			this.maxMessageSize = maxMessageSize;
-		}
+    }
 
-		public int getGameSpeed() {
-			return gameSpeed;
-		}
 
-		public void setGameSpeed(int gameSpeed) {
-			this.gameSpeed = gameSpeed;
-		}
+    public static class InitializeMessage extends Message {
 
-		public InitializeMessage(int id, int maxMessageSize, int gameSpeed) {
-			super();
-			this.id = id;
-			this.maxMessageSize = maxMessageSize;
-			this.gameSpeed = gameSpeed;
-		}
+        private static final long serialVersionUID = 1L;
 
-	}
-	
-	public static class TerminateMessage extends Message {
+        private int id;
 
-		private static final long serialVersionUID = 1L;
-		
-	}
+        private int maxMessageSize;
 
-	public static class ScanMessage extends Message {
+        private int gameSpeed;
 
-		private static final long serialVersionUID = 1L;
-		
-		public ScanMessage(int stamp) {
-			super();
-			this.stamp = stamp;
-		}
-		
-		private int stamp;
-		
-		public int getStamp() {
-			return stamp;
-		}
+        public int getId() {
+            return id;
+        }
 
-		public void setStamp(int stamp) {
-			this.stamp = stamp;
-		}
-		
-	}
-	
-	public static class StateMessage extends Message {
+        public void setId(int id) {
+            this.id = id;
+        }
 
-		private int stamp;
-		
-		public int getStamp() {
-			return stamp;
-		}
+        public int getMaxMessageSize() {
+            return maxMessageSize;
+        }
 
-		public void setStamp(int stamp) {
-			this.stamp = stamp;
-		}
+        public void setMaxMessageSize(int maxMessageSize) {
+            this.maxMessageSize = maxMessageSize;
+        }
 
-		private Direction direction;
-		
-		private Neighborhood neighborhood;
-		
-		private boolean hasFlag;
-		
-		private static final long serialVersionUID = 1L;
-		
-		public Direction getDirection() {
-			return direction;
-		}
+        public int getGameSpeed() {
+            return gameSpeed;
+        }
 
-		public void setDirection(Direction direction) {
-			this.direction = direction;			
-		}
+        public void setGameSpeed(int gameSpeed) {
+            this.gameSpeed = gameSpeed;
+        }
 
-		public StateMessage(Direction direction, Neighborhood neighborhood, boolean hasFlag) {
-			super();
-			this.direction = direction;
-			this.neighborhood = neighborhood;
-			this.hasFlag = hasFlag;
-		}
+        public InitializeMessage(int id, int maxMessageSize, int gameSpeed) {
+            super();
+            this.id = id;
+            this.maxMessageSize = maxMessageSize;
+            this.gameSpeed = gameSpeed;
+        }
 
-		public Neighborhood getNeighborhood() {
-			return neighborhood;
-		}
+    }
 
-		public boolean hasFlag() {
-			return hasFlag;
-		}
+    public static class TerminateMessage extends Message {
 
-		public void setFlag(boolean hasFlag) {
-			this.hasFlag = hasFlag;
-		}
+        private static final long serialVersionUID = 1L;
 
-	}
-	
-	public static class MoveMessage extends Message {
+    }
 
-		private Direction direction;
-		
-		private static final long serialVersionUID = 1L;
+    public static class StateMessage extends Message {
 
-		public Direction getDirection() {
-			return direction;
-		}
+        private int stamp;
 
-		public void setDirection(Direction direction) {
-			this.direction = direction;
-		}
+        public int getStamp() {
+            return stamp;
+        }
 
-		public MoveMessage(Direction direction) {
-			super();
-			this.direction = direction;
-		}
+        public void setStamp(int stamp) {
+            this.stamp = stamp;
+        }
 
-	}
-	
-	public static class SendMessage extends Message {
+        private Direction direction;
 
-		private static final long serialVersionUID = 1L;
-	
-		private int to;
-		
-		private byte[] message;
+        private Neighborhood neighborhood;
 
-		public SendMessage(int to, byte[] message) {
-			super();
-			this.to = to;
-			this.message = message;
-		}
+        private boolean hasFlag;
 
-		public int getTo() {
-			return to;
-		}
+        private static final long serialVersionUID = 1L;
 
-		public void setTo(int to) {
-			this.to = to;
-		}
+        public Direction getDirection() {
+            return direction;
+        }
 
-		public byte[] getMessage() {
-			return message;
-		}
+        public void setDirection(Direction direction) {
+            this.direction = direction;
+        }
 
-		public void setMessage(byte[] message) {
-			this.message = message;
-		}
-		
-	}
-	
-	public static class ReceiveMessage extends Message {
+        public StateMessage(Direction direction, Neighborhood neighborhood, boolean hasFlag, int stamp) {
+            super();
+            this.direction = direction;
+            this.neighborhood = neighborhood;
+            this.hasFlag = hasFlag;
+            this.stamp = stamp;
+        }
 
-		private static final long serialVersionUID = 1L;
-		
-		private int from;
-		
-		private byte[] message;
+        public Neighborhood getNeighborhood() {
+            return neighborhood;
+        }
 
-		public ReceiveMessage(int from, byte[] message) {
-			super();
-			this.from = from;
-			this.message = message;
-		}
+        public boolean hasFlag() {
+            return hasFlag;
+        }
 
-		public int getFrom() {
-			return from;
-		}
+        public void setFlag(boolean hasFlag) {
+            this.hasFlag = hasFlag;
+        }
 
-		public void setFrom(int from) {
-			this.from = from;
-		}
+    }
 
-		public byte[] getMessage() {
-			return message;
-		}
+    public static class MoveMessage extends Message {
 
-		public void setMessage(byte[] message) {
-			this.message = message;
-		}
-		
-		
-	}
+        private int stamp;
+
+        public int getStamp() {
+            return stamp;
+        }
+
+        public void setStamp(int stamp) {
+            this.stamp = stamp;
+        }
+
+        private Direction direction;
+
+        private static final long serialVersionUID = 1L;
+
+        public Direction getDirection() {
+            return direction;
+        }
+
+        public void setDirection(Direction direction) {
+            this.direction = direction;
+        }
+
+        public MoveMessage(Direction direction, int stamp) {
+            super();
+            this.direction = direction;
+            this.stamp = stamp;
+        }
+    }
+
+    public static class SendMessage extends Message {
+
+        private static final long serialVersionUID = 1L;
+
+        private int to;
+
+        private byte[] message;
+
+        public SendMessage(int to, byte[] message) {
+            super();
+            this.to = to;
+            this.message = message;
+        }
+
+        public int getTo() {
+            return to;
+        }
+
+        public void setTo(int to) {
+            this.to = to;
+        }
+
+        public byte[] getMessage() {
+            return message;
+        }
+
+        public void setMessage(byte[] message) {
+            this.message = message;
+        }
+
+    }
+
+    public static class ReceiveMessage extends Message {
+
+        private static final long serialVersionUID = 1L;
+
+        private int from;
+
+        private byte[] message;
+
+        public ReceiveMessage(int from, byte[] message) {
+            super();
+            this.from = from;
+            this.message = message;
+        }
+
+        public int getFrom() {
+            return from;
+        }
+
+        public void setFrom(int from) {
+            this.from = from;
+        }
+
+        public byte[] getMessage() {
+            return message;
+        }
+
+        public void setMessage(byte[] message) {
+            this.message = message;
+        }
+
+
+    }
 }

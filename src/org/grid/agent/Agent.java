@@ -17,6 +17,14 @@
  */
 package org.grid.agent;
 
+import org.grid.agent.sample.SampleAgent;
+import org.grid.protocol.Message;
+import org.grid.protocol.Message.Direction;
+import org.grid.protocol.Message.ReceiveMessage;
+import org.grid.protocol.Message.StateMessage;
+import org.grid.protocol.Neighborhood;
+import org.grid.protocol.ProtocolSocket;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,557 +36,545 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.grid.agent.sample.SampleAgent;
-import org.grid.protocol.Message;
-import org.grid.protocol.Neighborhood;
-import org.grid.protocol.ProtocolSocket;
-import org.grid.protocol.Message.Direction;
-import org.grid.protocol.Message.ReceiveMessage;
-import org.grid.protocol.Message.StateMessage;
-
 
 /**
  * The base class for all agents. This class also includes main method that is
  * used to launch the client and handles all low level protocol communication
  * and the lifecycle of the agent.
- * 
+ * <p/>
  * To run the sample agent type: java -cp bin/ fri.pipt.agent.Agent localhost
  * fri.pipt.agent.sample.SampleAgent
- * 
+ *
  * @author lukacu
  * @see SampleAgent
  */
-@Membership(team="default",passphrase="")
+@Membership(team = "default", passphrase = "")
 public abstract class Agent {
 
-	private static Class<Agent> agentClassStatic = null;
+    private static Class<Agent> agentClassStatic = null;
 
-	private static Vector<ClientProtocolSocket> clients = new Vector<ClientProtocolSocket>();
+    private static Vector<ClientProtocolSocket> clients = new Vector<ClientProtocolSocket>();
 
-	private static String teamOverride = null;
-	
-	private static String passphraseOverride = null;
-	
-	public static class ProxyClassLoader extends ClassLoader {
-		
-		private Set<String> protectedClassPrefixes = new HashSet<String>();
-		
-		public ProxyClassLoader() {
-			super(ProxyClassLoader.class.getClassLoader());
-			
-			protectedClassPrefixes.add("sun.");
-			protectedClassPrefixes.add("java.");
-			protectedClassPrefixes.add("javax.");
+    private static String teamOverride = null;
+
+    private static String passphraseOverride = null;
+
+    public static class ProxyClassLoader extends ClassLoader {
+
+        private Set<String> protectedClassPrefixes = new HashSet<String>();
+
+        public ProxyClassLoader() {
+            super(ProxyClassLoader.class.getClassLoader());
+
+            protectedClassPrefixes.add("sun.");
+            protectedClassPrefixes.add("java.");
+            protectedClassPrefixes.add("javax.");
             protectedClassPrefixes.add("org.grid.agent.Agent");
             protectedClassPrefixes.add("org.grid.protocol");
             protectedClassPrefixes.add("org.grid.arena");
-		}
-
-		public Class<?> loadClass(String className)
-				throws ClassNotFoundException {
-			return findClass(className);
-		}
-
-		public Class<?> findClass(String className) {
-			Class<?> result = null;
-			result = (Class<?>) classes.get(className);
-			if (result != null) {
-				return result;
-			}
-
-			try {
-				Class<?> cls = this.findSystemClass(className);
-				
-				for (String prefix : protectedClassPrefixes) {
-					if (className.startsWith(prefix)) {
-						classes.put(className, cls);
-						return cls;	
-					}
-				}
-					
-				
-				String classResource = className.substring(className.lastIndexOf('.')+1) + ".class";
+        }
 
-				InputStream in = cls.getResourceAsStream(classResource);
-				ByteArrayOutputStream ba = new ByteArrayOutputStream();
+        public Class<?> loadClass(String className)
+                throws ClassNotFoundException {
+            return findClass(className);
+        }
 
-				byte b[] = new byte[1024];
+        public Class<?> findClass(String className) {
+            Class<?> result = null;
+            result = (Class<?>) classes.get(className);
+            if (result != null) {
+                return result;
+            }
 
-				while (true) {
-					int len = in.read(b);
-					if (len == -1)
-						break;
-					ba.write(b, 0, len);
-				}
+            try {
+                Class<?> cls = this.findSystemClass(className);
 
-				Class<?> cl = defineClass(className, ba.toByteArray(), 0, ba
-						.size());
+                for (String prefix : protectedClassPrefixes) {
+                    if (className.startsWith(prefix)) {
+                        classes.put(className, cls);
+                        return cls;
+                    }
+                }
 
-				classes.put(className, cl);
 
-				return cl;
+                String classResource = className.substring(className.lastIndexOf('.') + 1) + ".class";
 
-			} catch (IOException e) {
+                InputStream in = cls.getResourceAsStream(classResource);
+                ByteArrayOutputStream ba = new ByteArrayOutputStream();
 
-			} catch (NullPointerException e) {
-			
-			} catch (ClassNotFoundException e) {
+                byte b[] = new byte[1024];
 
-			}
-			/*
-			 * try { return findSystemClass(className); } catch (Exception e) {
-			 * }
-			 */
-			return null;
-		}
+                while (true) {
+                    int len = in.read(b);
+                    if (len == -1)
+                        break;
+                    ba.write(b, 0, len);
+                }
 
-		private Hashtable<String, Class<?>> classes = new Hashtable<String, Class<?>>();
-	}
+                Class<?> cl = defineClass(className, ba.toByteArray(), 0, ba
+                        .size());
 
-	public static enum Status {
-		UNKNOWN, REGISTERED, INITIALIZED
-	}
+                classes.put(className, cl);
 
-	private static class ClientProtocolSocket extends ProtocolSocket implements
-			Runnable {
+                return cl;
 
-		private ConcurrentLinkedQueue<Message> inbox = new ConcurrentLinkedQueue<Message>();
+            } catch (IOException e) {
 
-		private Status status = Status.UNKNOWN;
+            } catch (NullPointerException e) {
 
-		private Agent agent = null;
+            } catch (ClassNotFoundException e) {
 
-		private boolean terminated = false;
+            }
+            /*
+                * try { return findSystemClass(className); } catch (Exception e) {
+                * }
+                */
+            return null;
+        }
 
-		private String name;
+        private Hashtable<String, Class<?>> classes = new Hashtable<String, Class<?>>();
+    }
 
-		public ClientProtocolSocket(Socket sck, String name) throws IOException {
-			super(sck);
+    public static enum Status {
+        UNKNOWN, REGISTERED, INITIALIZED
+    }
 
-			String team = "default";
-			String passphrase = "";
-			
-			if (teamOverride == null) {
-				
-				Membership m = agentClassStatic.getAnnotation(Membership.class);
-	
-				if (m != null) {
-					team = m.team();
-					passphrase = m.passphrase();
-				}
-			} else {
-				team = teamOverride;
-				passphrase = passphraseOverride;
-			}
+    private static class ClientProtocolSocket extends ProtocolSocket implements
+            Runnable {
 
-			sendMessage(new Message.RegisterMessage(team, passphrase));
+        private ConcurrentLinkedQueue<Message> inbox = new ConcurrentLinkedQueue<Message>();
 
-			this.name = name;
+        private Status status = Status.UNKNOWN;
 
-		}
+        private Agent agent = null;
 
-		public String getName() {
-			return name;
-		}
+        private boolean terminated = false;
 
-		@SuppressWarnings("unchecked")
-		@Override
-		protected void handleMessage(Message message) {
+        private String name;
 
-			switch (status) {
-			case UNKNOWN:
-				if (message instanceof Message.AcknowledgeMessage)
-					status = Status.REGISTERED;
-				break;
+        public ClientProtocolSocket(Socket sck, String name) throws IOException {
+            super(sck);
 
-			case REGISTERED:
-				if (message instanceof Message.InitializeMessage) {
+            String team = "default";
+            String passphrase = "";
 
-					try {
+            if (teamOverride == null) {
 
-						ProxyClassLoader loader = new ProxyClassLoader();
+                Membership m = agentClassStatic.getAnnotation(Membership.class);
 
-						Class<Agent> agentClass = (Class<Agent>) loader
-								.loadClass(agentClassStatic.getCanonicalName());
+                if (m != null) {
+                    team = m.team();
+                    passphrase = m.passphrase();
+                }
+            } else {
+                team = teamOverride;
+                passphrase = passphraseOverride;
+            }
 
-						Agent agent = agentClass.newInstance();
+            sendMessage(new Message.RegisterMessage(team, passphrase));
 
-						agent.id = ((Message.InitializeMessage) message)
-								.getId();
+            this.name = name;
 
-						agent.client = this;
+        }
 
-						agent.maxMessageSize = ((Message.InitializeMessage) message)
-								.getMaxMessageSize();
+        public String getName() {
+            return name;
+        }
 
-						agent.gameSpeed = ((Message.InitializeMessage) message)
-								.getGameSpeed();
+        @SuppressWarnings("unchecked")
+        @Override
+        protected void handleMessage(Message message) {
 
-						try {
-							agent.initialize();
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
+            switch (status) {
+                case UNKNOWN:
+                    if (message instanceof Message.AcknowledgeMessage)
+                        status = Status.REGISTERED;
+                    break;
 
-						sendMessage(new Message.AcknowledgeMessage());
+                case REGISTERED:
+                    if (message instanceof Message.InitializeMessage) {
 
-						status = Status.INITIALIZED;
-						
-						this.agent = agent;
-						
-					} catch (Throwable e) {
-						e.printStackTrace();
-					}
+                        try {
 
-				}
+                            ProxyClassLoader loader = new ProxyClassLoader();
 
-				break;
+                            Class<Agent> agentClass = (Class<Agent>) loader
+                                    .loadClass(agentClassStatic.getCanonicalName());
 
-			case INITIALIZED:
-				if (message instanceof Message.StateMessage)
-					super.handleMessage(message);
+                            Agent agent = agentClass.newInstance();
 
-				if ((message instanceof Message.ReceiveMessage)
-						|| (message instanceof Message.StateMessage)) {
+                            agent.id = ((Message.InitializeMessage) message)
+                                    .getId();
 
-					synchronized (inbox) {
+                            agent.client = this;
 
-						inbox.add(message);
-						inbox.notifyAll();
+                            agent.maxMessageSize = ((Message.InitializeMessage) message)
+                                    .getMaxMessageSize();
 
-					}
+                            agent.gameSpeed = ((Message.InitializeMessage) message)
+                                    .getGameSpeed();
 
-				}
+                            try {
+                                agent.initialize();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
 
-				if (message instanceof Message.TerminateMessage) {
+                            sendMessage(new Message.AcknowledgeMessage());
 
-					try {
-						agent.terminate();
-					} catch (Throwable e) {
-						e.printStackTrace();
-					}
+                            status = Status.INITIALIZED;
 
-					agent = null;
-					status = Status.REGISTERED;
+                            this.agent = agent;
 
-				}
+                        } catch (Throwable e) {
+                            e.printStackTrace();
+                        }
 
-				break;
+                    }
 
-			}
+                    break;
 
-		}
+                case INITIALIZED:
+                    if (message instanceof Message.StateMessage)
+                        super.handleMessage(message);
 
-		public boolean isAlive() {
-			return status == Status.INITIALIZED;
-		}
+                    if ((message instanceof Message.ReceiveMessage)
+                            || (message instanceof Message.StateMessage)) {
 
-		@Override
-		protected void onTerminate() {
-			switch (status) {
-			case UNKNOWN:
-				System.out
-						.println("ERROR: Unable to connect. Did you set the membership information correctly?");
-				break;
-			case REGISTERED:
-				System.out.println("ERROR: Disconnected by server.");
-				break;
-			case INITIALIZED:
-				System.out.println("ERROR: Disconnected by server.");
-				break;
-			}
-			super.onTerminate();
-			terminated = true;
-		}
+                        synchronized (inbox) {
 
-		@Override
-		public void run() {
-			Thread messages = new Thread(new Runnable() {
+                            inbox.add(message);
+                            inbox.notifyAll();
 
-				@Override
-				public void run() {
+                        }
 
-					while (true) {
+                    }
 
-						synchronized (inbox) {
-							while (inbox.isEmpty()) {
-								try {
-									inbox.wait();
-								} catch (InterruptedException e) {
-								}
-							}
-						}
+                    if (message instanceof Message.TerminateMessage) {
 
-						Message msg = inbox.poll();
+                        try {
+                            agent.terminate();
+                        } catch (Throwable e) {
+                            e.printStackTrace();
+                        }
 
-						if (agent != null && isAlive()) {
-							try {
+                        agent = null;
+                        status = Status.REGISTERED;
 
-								if (msg instanceof ReceiveMessage) {
-									agent.receive(((ReceiveMessage) msg)
-											.getFrom(), ((ReceiveMessage) msg)
-											.getMessage());
-								} else if (msg instanceof StateMessage) {
-									agent
-											.state(((StateMessage) msg)
-													.getStamp(),
-													((StateMessage) msg)
-															.getNeighborhood(),
-													((StateMessage) msg)
-															.getDirection(),
-													((StateMessage) msg)
-															.hasFlag());
-								}
+                    }
 
-							} catch (Exception e) {
-								e.printStackTrace();
-							}
-						}
+                    break;
 
-					}
-				}
-			});
-			messages.start();
+            }
 
-			try {
+        }
 
-				while (true) {
+        public boolean isAlive() {
+            return status == Status.INITIALIZED;
+        }
 
-					if (agent != null)
-						agent.run();
+        @Override
+        protected void onTerminate() {
+            switch (status) {
+                case UNKNOWN:
+                    System.out
+                            .println("ERROR: Unable to connect. Did you set the membership information correctly?");
+                    break;
+                case REGISTERED:
+                    System.out.println("ERROR: Disconnected by server.");
+                    break;
+                case INITIALIZED:
+                    System.out.println("ERROR: Disconnected by server.");
+                    break;
+            }
+            super.onTerminate();
+            terminated = true;
+        }
 
-					try {
-						Thread.sleep(100);
-					} catch (InterruptedException e) {
-					}
+        @Override
+        public void run() {
+            Thread messages = new Thread(new Runnable() {
 
-				}
+                @Override
+                public void run() {
 
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
+                    while (true) {
 
-	}
+                        synchronized (inbox) {
+                            while (inbox.isEmpty()) {
+                                try {
+                                    inbox.wait();
+                                } catch (InterruptedException e) {
+                                }
+                            }
+                        }
 
-	@SuppressWarnings("unchecked")
-	public static void main(String[] args) throws NumberFormatException,
-			UnknownHostException, IOException, ClassNotFoundException {
+                        Message msg = inbox.poll();
 
-		agentClassStatic = (Class<Agent>) Class.forName(args[1]);
+                        if (agent != null && isAlive()) {
+                            try {
 
-		int count = 1;
+                                if (msg instanceof ReceiveMessage) {
+                                    agent.receive(((ReceiveMessage) msg)
+                                            .getFrom(), ((ReceiveMessage) msg)
+                                            .getMessage());
+                                } else if (msg instanceof StateMessage) {
+                                    agent
+                                            .state(((StateMessage) msg)
+                                                    .getStamp(),
+                                                    ((StateMessage) msg)
+                                                            .getNeighborhood(),
+                                                    ((StateMessage) msg)
+                                                            .getDirection(),
+                                                    ((StateMessage) msg)
+                                                            .hasFlag());
+                                }
 
-		if (args.length > 2)
-			count = Integer.parseInt(args[2]);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
 
-		if (args.length > 3)
-			teamOverride = args[3];
+                    }
+                }
+            });
+            messages.start();
 
-		if (args.length > 4)
-			passphraseOverride = args[4];
-		
-		for (int i = 0; i < count; i++) {
-			Socket socket = new Socket(args[0], 5000);
-			socket.setTcpNoDelay(true);
-			
-			ClientProtocolSocket client = new ClientProtocolSocket(socket,
-					"Client " + i);
+            try {
 
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {}
-			
-			Thread thread = new Thread(client);
-			thread.setName(client.getName());
-			thread.start();
+                while (true) {
 
-			clients.add(client);
+                    if (agent != null)
+                        agent.run();
 
-		}
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                    }
 
-		while (true) {
+                }
 
-			boolean alive = false;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
 
-			for (ClientProtocolSocket c : clients) {
+    }
 
-				alive |= !c.terminated;
+    @SuppressWarnings("unchecked")
+    public static void main(String[] args) throws NumberFormatException,
+            UnknownHostException, IOException, ClassNotFoundException {
 
-			}
+        agentClassStatic = (Class<Agent>) Class.forName(args[1]);
 
-			if (!alive)
-				break;
+        int count = 1;
 
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-			}
+        if (args.length > 2)
+            count = Integer.parseInt(args[2]);
 
-		}
+        if (args.length > 3)
+            teamOverride = args[3];
 
-		System.exit(0);
+        if (args.length > 4)
+            passphraseOverride = args[4];
 
-	}
+        for (int i = 0; i < count; i++) {
+            Socket socket = new Socket(args[0], 5000);
+            socket.setTcpNoDelay(true);
 
-	private int id;
+            ClientProtocolSocket client = new ClientProtocolSocket(socket,
+                    "Client " + i);
 
-	private int maxMessageSize;
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+            }
 
-	private int gameSpeed;
+            Thread thread = new Thread(client);
+            thread.setName(client.getName());
+            thread.start();
 
-	private ClientProtocolSocket client;
+            clients.add(client);
 
-	/**
-	 * Called when the agent is no longer needed.
-	 */
-	public abstract void terminate();
+        }
 
-	/**
-	 * Called when the agent is initialized.
-	 */
-	public abstract void initialize();
+        while (true) {
 
-	/**
-	 * Send a message to another agent in the same team. Note that if distance
-	 * criteria apply in the game the agent may not receive the message if it is
-	 * too far.
-	 * 
-	 * @param to
-	 *            the id of the agent in the same team that should receive this
-	 *            message
-	 * @param message
-	 *            the message as a byte array
-	 */
-	public final void send(int to, byte[] message) {
+            boolean alive = false;
 
-		if (!isAlive())
-			return;
+            for (ClientProtocolSocket c : clients) {
 
-		client.sendMessage(new Message.SendMessage(to, message));
+                alive |= !c.terminated;
 
-	}
-
-	/**
-	 * Send a message to another agent in the same team. Note that if distance
-	 * criteria apply in the game the agent may not receive the message if it is
-	 * too far.
-	 * 
-	 * @param to
-	 *            the id of the agent in the same team that should receive this
-	 *            message
-	 * @param message
-	 *            the message as a string
-	 */
-	public final void send(int to, String message) {
-
-		if (!isAlive())
-			return;
-
-		client.sendMessage(new Message.SendMessage(to, message.getBytes()));
-
-	}
-
-	/**
-	 * Sends a move command to the server. Note that depending on the current
-	 * state of the agent, the command may be acknowledged or ignored. You
-	 * should check the state of the agent to see the actual
-	 * 
-	 * @param direction
-	 *            the desired direction
-	 */
-	public final void move(Direction direction) {
-
-		if (!isAlive())
-			return;
-
-		client.sendMessage(new Message.MoveMessage(direction));
-
-	}
-
-	/**
-	 * Sends a scan request to the server. The server will respond with the
-	 * local state of the environment that will be returned to the agent using
-	 * the {@link #state(int, Neighborhood, Direction, boolean)} callback.
-	 * 
-	 * @param stamp
-	 *            the stamp of the request
-	 */
-	public final void scan(int stamp) {
-
-		if (!isAlive())
-			return;
-
-		client.sendMessage(new Message.ScanMessage(stamp));
-
-	}
-
-	/**
-	 * Called when a new message arrives. Should execute quickly.
-	 * 
-	 * @param from
-	 *            the id of the sender agent
-	 * @param message
-	 *            the message as a byte array
-	 */
-	public abstract void receive(int from, byte[] message);
-
-	/**
-	 * Called as a result of a {@link #scan(int)} instruction
-	 * 
-	 * @param stamp
-	 *            the stamp of the request
-	 * @param neighborhood
-	 *            the neighborhood information
-	 * @param direction
-	 *            the direction of the movement
-	 * @param hasFlag
-	 *            does this agent carry the flag of the team
-	 */
-	public abstract void state(int stamp, Neighborhood neighborhood,
-			Direction direction, boolean hasFlag);
-
-	/**
-	 * The main method of the agent. Should loop while the agent is alive.
-	 */
-	public abstract void run();
-
-	/**
-	 * Checks if the agent is alive.
-	 * 
-	 * @return true if the agent is alive, false otherwise
-	 */
-	public final boolean isAlive() {
-		return client.agent == this;
-	}
-
-	/**
-	 * Returns the id of the local agent
-	 * 
-	 * @return the id of the agent
-	 */
-	public final int getId() {
-		return id;
-	}
-
-	/**
-	 * Returns the execution speed of the server. Useful for setting delays.
-	 * 
-	 * @return the speed of the server. The server iterates time-steps with
-	 *         (approximately) <tt>1000 / speed</tt> milliseconds delay.
-	 */
-	public final int getSpeed() {
-		return gameSpeed;
-	}
-
-	/**
-	 * Returns the maximum allowed message size. Sending a message that is
-	 * longer will result in server dropping the message.
-	 * 
-	 * @return the maximum message size in bytes
-	 */
-	public final int getMaxMessageSize() {
-		return maxMessageSize;
-	}
+            }
+
+            if (!alive)
+                break;
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+            }
+
+        }
+
+        System.exit(0);
+
+    }
+
+    private int id;
+
+    private int maxMessageSize;
+
+    private int gameSpeed;
+
+    private ClientProtocolSocket client;
+
+    /**
+     * Called when the agent is no longer needed.
+     */
+    public abstract void terminate();
+
+    /**
+     * Called when the agent is initialized.
+     */
+    public abstract void initialize();
+
+    /**
+     * Send a message to another agent in the same team. Note that if distance
+     * criteria apply in the game the agent may not receive the message if it is
+     * too far.
+     *
+     * @param to      the id of the agent in the same team that should receive this
+     *                message
+     * @param message the message as a byte array
+     */
+    public final void send(int to, byte[] message) {
+
+        if (!isAlive())
+            return;
+
+        client.sendMessage(new Message.SendMessage(to, message));
+
+    }
+
+    /**
+     * Send a message to another agent in the same team. Note that if distance
+     * criteria apply in the game the agent may not receive the message if it is
+     * too far.
+     *
+     * @param to      the id of the agent in the same team that should receive this
+     *                message
+     * @param message the message as a string
+     */
+    public final void send(int to, String message) {
+
+        if (!isAlive())
+            return;
+
+        client.sendMessage(new Message.SendMessage(to, message.getBytes()));
+
+    }
+
+    /**
+     * Sends a move command to the server. Note that depending on the current
+     * state of the agent, the command may be acknowledged or ignored. You
+     * should check the state of the agent to see the actual
+     * <p/>
+     * The server will respond with the
+     * local state of the environment that will be returned to the agent using
+     * the {@link #state(int, Neighborhood, Direction, boolean)} callback.
+     *
+     * @param direction the desired direction
+     * @param stamp     desired stamp for msg
+     */
+    public final void move(Direction direction, int stamp) {
+
+        if (!isAlive())
+            return;
+
+        client.sendMessage(new Message.MoveMessage(direction, stamp));
+
+    }
+
+    /**
+     * utility method for calling move with stamp=0
+     *
+     * @param direction desired direction
+     */
+    public final void move(Direction direction) {
+        move(direction, 0);
+    }
+
+    /**
+     * utility method for move(Direction.NONE, stamp)
+     *
+     * @param stamp desired stamp
+     */
+    public final void scan(int stamp) {
+        move(Direction.NONE, stamp);
+    }
+
+    /**
+     * Called when a new message arrives. Should execute quickly.
+     *
+     * @param from    the id of the sender agent
+     * @param message the message as a byte array
+     */
+    public abstract void receive(int from, byte[] message);
+
+    /**
+     * Called as a result of a {@link #move(org.grid.protocol.Message.Direction, int)} instruction
+     *
+     * @param stamp        the stamp of the request
+     * @param neighborhood the neighborhood information
+     * @param direction    the direction of the movement
+     * @param hasFlag      does this agent carry the flag of the team
+     */
+    public abstract void state(int stamp, Neighborhood neighborhood,
+                               Direction direction, boolean hasFlag);
+
+    /**
+     * The main method of the agent. Should loop while the agent is alive.
+     */
+    public abstract void run();
+
+    /**
+     * Checks if the agent is alive.
+     *
+     * @return true if the agent is alive, false otherwise
+     */
+    public final boolean isAlive() {
+        return client.agent == this;
+    }
+
+    /**
+     * Returns the id of the local agent
+     *
+     * @return the id of the agent
+     */
+    public final int getId() {
+        return id;
+    }
+
+    /**
+     * Returns the execution speed of the server. Useful for setting delays.
+     *
+     * @return the speed of the server. The server iterates time-steps with
+     *         (approximately) <tt>1000 / speed</tt> milliseconds delay.
+     */
+    public final int getSpeed() {
+        return gameSpeed;
+    }
+
+    /**
+     * Returns the maximum allowed message size. Sending a message that is
+     * longer will result in server dropping the message.
+     *
+     * @return the maximum message size in bytes
+     */
+    public final int getMaxMessageSize() {
+        return maxMessageSize;
+    }
 
 }
